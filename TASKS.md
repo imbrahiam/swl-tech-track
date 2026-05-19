@@ -44,7 +44,21 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 | A-04 | Página de usuarios admin (lista, cambiar rol, desactivar) | DA | `feature/A-04-user-management` | RF-14, RF-15 | ⬜ |
 
 **Guías:**
-- A-04: Usa `requireAdmin()` en `app/(dashboard)/admin/layout.tsx` (ya implementado). Obtén usuarios con `prisma.user.findMany()` en un Server Component.
+
+### A-04 — Gestión de usuarios (solo ADMIN)
+
+**Qué construir:** Una página en `app/(dashboard)/admin/users/page.tsx` (el placeholder ya existe) que muestre la lista de todos los usuarios del sistema. El admin puede ver quiénes están registrados, cambiar su rol entre ADMIN y TECNICO, y desactivar/reactivar cuentas.
+
+**Cómo hacerlo:**
+1. Es un Server Component. Llama `prisma.user.findMany({ orderBy: { createdAt: "asc" } })` directamente — no necesitas una API.
+2. Muestra una tabla con columnas: Nombre, Email, Rol, Estado (activo/baneado), Fecha de registro.
+3. El botón "Cambiar rol" y "Desactivar" son formularios con Server Actions en `app/(dashboard)/admin/users/actions.ts`.
+   - Cambiar rol: `prisma.user.update({ where: { id }, data: { role: nuevoRol } })`
+   - Desactivar: `prisma.user.update({ where: { id }, data: { banned: true } })`
+   - Reactivar: `prisma.user.update({ where: { id }, data: { banned: false } })`
+4. Después de cada acción llama `revalidatePath("/admin/users")` para refrescar la tabla.
+5. El layout `app/(dashboard)/admin/layout.tsx` ya llama `requireAdmin()` — no necesitas proteger la página de nuevo.
+6. Un admin no debe poder desactivarse a sí mismo. Compara el `id` del usuario con `session.user.id` y deshabilita el botón si coinciden.
 
 ---
 
@@ -52,7 +66,7 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 
 | ID | Tarea | Responsable | Rama | RF | Estado |
 |----|-------|-------------|------|----|--------|
-| O-01 | Autocompletado de cliente por cédula/teléfono | DA | `feature/O-01-client-autocomplete` | RF-11 | ⬜ |
+| O-01 | Búsqueda de cliente existente por cédula/teléfono al crear orden | DA | `feature/O-01-client-autocomplete` | RF-11 | ⬜ |
 | O-02 | Formulario de nueva orden + Server Action `createOrder` | DA | `feature/O-02-new-order` | RF-01 | ⬜ |
 | O-03 | Tabla de órdenes con búsqueda y filtros | CC | `feature/O-03-order-list` | RF-02, RF-08 | ⬜ |
 | O-04 | Página de detalle de orden (datos + historial de log) | CC | `feature/O-04-order-detail` | RF-02, RF-16 | ⬜ |
@@ -62,10 +76,200 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 | O-08 | Cierre de orden con diálogo de confirmación | DA | `feature/O-08-close-order` | RF-05 | ⬜ |
 
 **Guías:**
-- O-01: Route Handler `GET /api/clients/search?q=` llamado desde el componente de autocompletado (cliente).
-- O-02: Server Action en `app/(dashboard)/orders/new/actions.ts`. Llama `revalidatePath("/orders")` después de crear y luego `redirect("/orders")`. El formulario ya tiene la estructura en `app/(dashboard)/orders/new/page.tsx`.
-- O-05: Importa `canTransition` desde `lib/order-transitions.ts`. Crea un `OrderLog` por cada cambio. Rechaza con mensaje de error si la transición no es válida.
-- O-05: Cada cambio de estado = un registro en `order_log` con: userId, previousStatus, newStatus, comment, timestamp.
+
+### O-01 — Búsqueda de cliente al crear orden
+
+**Qué construir:** Al crear una nueva orden, el técnico no escribe los datos del cliente a mano cada vez. En su lugar, escribe la cédula o el teléfono del cliente en un campo de búsqueda. Si el cliente ya existe en la base de datos, sus datos (nombre, cédula, teléfono) se rellenan automáticamente. Si no existe, se muestran campos para crearlo en el mismo formulario.
+
+**Cómo hacerlo:**
+1. Crea el Route Handler `app/api/clients/search/route.ts` que recibe `GET /api/clients/search?q=<texto>` y busca en la tabla `client` por `cedula` o `phone` que contengan ese texto:
+   ```ts
+   const clients = await prisma.client.findMany({
+     where: { OR: [{ cedula: { contains: q } }, { phone: { contains: q } }] },
+     take: 5,
+   })
+   ```
+2. Crea el componente cliente `components/client-search.tsx` con `"use client"`. Tiene un `<input>` de texto. Mientras el usuario escribe (con debounce de ~300ms), hace `fetch("/api/clients/search?q=<valor>")` y muestra una lista desplegable con los resultados.
+3. Cuando el usuario selecciona un resultado de la lista, los campos nombre/cédula/teléfono del formulario de orden se rellenan y el `clientId` se guarda en un `<input type="hidden">`.
+4. Si no hay resultados, mostrar opción "Crear cliente nuevo" que despliega los campos vacíos para llenar.
+5. Este componente se usa dentro del formulario de O-02.
+
+> ⚠️ El Route Handler sí requiere autenticación. Llama `requireSession()` al inicio.
+
+### O-02 — Formulario de nueva orden
+
+**Qué construir:** El formulario completo para registrar una orden de servicio. El técnico llena los datos del equipo, la falla, y opcionalmente notas adicionales. Al enviar, la orden queda registrada en la base de datos con estado `RECIBIDO`.
+
+**Campos del formulario** (mapeados al modelo `Order` del schema):
+- Cliente (viene de O-01): `clientId` — hidden field con el ID del cliente seleccionado/creado
+- Marca del equipo: `brand` (texto libre, ej: Samsung, Apple, HP)
+- Modelo: `model` (texto libre, ej: Galaxy S23, MacBook Pro)
+- Número de serie: `serial` (opcional)
+- Descripción de la falla: `faultDesc` (textarea — qué le pasa al equipo según el cliente)
+- Extras/accesorios: `extras` (opcional, ej: "Incluye cargador y estuche")
+
+**Cómo hacerlo:**
+1. El formulario ya tiene estructura en `app/(dashboard)/orders/new/page.tsx` — conéctalo.
+2. Crea `app/(dashboard)/orders/new/actions.ts` con `"use server"`:
+   ```ts
+   export async function createOrder(formData: FormData) {
+     const session = await requireSession()
+     // Leer campos del formData
+     // Si clientId está vacío, primero crear el cliente con prisma.client.create()
+     // Luego crear la orden:
+     await prisma.order.create({
+       data: {
+         clientId, brand, model, serial, faultDesc, extras,
+         status: "RECIBIDO",
+         priority: "MEDIA",
+         technicianId: session.user.id, // el técnico que crea la orden
+       }
+     })
+     // Crear el primer OrderLog con newStatus: "RECIBIDO"
+     revalidatePath("/orders")
+     redirect("/orders")
+   }
+   ```
+3. El técnico que crea la orden queda asignado automáticamente como `technicianId`. No hay selector de técnico en este formulario.
+4. Después de crear, redirigir a `/orders` — no mostrar toast.
+
+### O-03 — Tabla de órdenes
+
+**Qué construir:** La página `/orders` muestra todas las órdenes del sistema en una tabla. El técnico puede buscar por número de orden, nombre de cliente, o filtrar por estado. Las órdenes se ordenan por fecha de creación descendente (más recientes primero).
+
+**Columnas de la tabla:** N° Orden | Cliente | Equipo (marca + modelo) | Estado | Técnico | Fecha ingreso
+
+**Cómo hacerlo:**
+1. Es un Server Component. En `app/(dashboard)/orders/page.tsx`, acepta `searchParams` para búsqueda y filtro:
+   ```ts
+   export default async function OrdersPage({ searchParams }: { searchParams: { q?: string; status?: string } }) {
+     const orders = await prisma.order.findMany({
+       where: {
+         AND: [
+           searchParams.q ? {
+             OR: [
+               { client: { name: { contains: searchParams.q, mode: "insensitive" } } },
+               { number: isNaN(+searchParams.q) ? undefined : +searchParams.q },
+             ]
+           } : {},
+           searchParams.status ? { status: searchParams.status as OrderStatus } : {},
+         ]
+       },
+       include: { client: true, technician: true },
+       orderBy: { createdAt: "desc" },
+     })
+   }
+   ```
+2. El buscador y el filtro de estado son un `<form>` con `method="GET"` — sin JavaScript extra, funciona con Server Components.
+3. El filtro de estado es un `<select>` con las 7 opciones del enum `OrderStatus`.
+4. Cada fila de la tabla tiene un badge de color según el estado (usa el componente `Badge` de shadcn).
+5. Cada fila es clickeable y navega a `/orders/[id]`.
+
+### O-04 — Página de detalle de orden
+
+**Qué construir:** La página `/orders/[id]` muestra todos los datos de una orden específica: información del cliente, datos del equipo, estado actual, técnico asignado, y el historial completo de cambios de estado (log).
+
+**Layout de la página** (el placeholder ya existe en `app/(dashboard)/orders/[id]/page.tsx`):
+- Columna principal (2/3): datos del cliente y equipo, descripción de la falla, historial de estados
+- Columna lateral (1/3): estado actual, prioridad, botones de acción (cambiar estado, imprimir)
+
+**Cómo hacerlo:**
+1. Obtén la orden con todos sus datos:
+   ```ts
+   const order = await prisma.order.findUniqueOrThrow({
+     where: { id: params.id },
+     include: {
+       client: true,
+       technician: true,
+       logs: { include: { user: true }, orderBy: { createdAt: "asc" } },
+     },
+   })
+   ```
+2. El historial de estados se muestra como una lista cronológica: fecha + hora, quién hizo el cambio, estado anterior → nuevo estado, comentario si tiene.
+3. No implementes el cambio de estado aquí — eso es O-05. Por ahora muestra el estado actual con un badge y deja el botón deshabilitado con un comentario.
+
+### O-05 — Cambio de estado de una orden
+
+**Qué construir:** Desde el detalle de una orden, el técnico puede avanzar el estado siguiendo el flujo establecido. No todos los estados son accesibles desde cualquier punto — solo las transiciones válidas están permitidas.
+
+**Flujo de estados** (definido en `lib/order-transitions.ts`):
+```
+RECIBIDO → EN_DIAGNOSTICO
+EN_DIAGNOSTICO → ESPERANDO_APROBACION | SIN_REPARACION
+ESPERANDO_APROBACION → EN_REPARACION | SIN_REPARACION
+EN_REPARACION → LISTO
+LISTO → ENTREGADO
+```
+`ENTREGADO` y `SIN_REPARACION` son estados finales — no se puede avanzar desde ellos.
+
+**Cómo hacerlo:**
+1. Crea `app/(dashboard)/orders/[id]/actions.ts` con `"use server"`:
+   ```ts
+   export async function updateOrderStatus(orderId: string, newStatus: OrderStatus, comment?: string) {
+     const session = await requireSession()
+     const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } })
+     
+     if (!canTransition(order.status, newStatus)) {
+       throw new Error(`Transición inválida: ${order.status} → ${newStatus}`)
+     }
+     
+     await prisma.$transaction([
+       prisma.order.update({ where: { id: orderId }, data: { status: newStatus } }),
+       prisma.orderLog.create({
+         data: {
+           orderId,
+           userId: session.user.id,
+           previousStatus: order.status,
+           newStatus,
+           comment: comment ?? null,
+         }
+       }),
+     ])
+     revalidatePath(`/orders/${orderId}`)
+   }
+   ```
+2. En la UI, muestra solo los estados a los que se puede transicionar desde el estado actual (usa `canTransition` para filtrar). Si el estado es final, muestra el badge pero sin botones.
+3. Opcionalmente ofrece un campo de texto para comentario al cambiar estado (ej: "Esperando repuesto del cliente").
+
+### O-06 — Edición de una orden
+
+**Qué construir:** Formulario para editar los datos de una orden existente (marca, modelo, serie, descripción de la falla, extras). Solo disponible si la orden NO está en estado `ENTREGADO` ni `SIN_REPARACION`.
+
+**Cómo hacerlo:**
+1. Crea `app/(dashboard)/orders/[id]/edit/page.tsx` con el formulario pre-rellenado con los datos actuales.
+2. Verifica al cargar la página (Server Component) que la orden no esté en estado final:
+   ```ts
+   const ESTADOS_FINALES = ["ENTREGADO", "SIN_REPARACION"] as const
+   if (ESTADOS_FINALES.includes(order.status)) redirect(`/orders/${params.id}`)
+   ```
+3. Server Action `updateOrder` en `actions.ts` que actualiza solo los campos editables (`brand`, `model`, `serial`, `faultDesc`, `extras`). No se puede cambiar el cliente ni el técnico desde aquí.
+4. Después de guardar, redirigir a `/orders/[id]`.
+
+### O-07 — Selector de prioridad
+
+**Qué construir:** En la página de detalle de una orden, el técnico puede cambiar la prioridad entre ALTA, MEDIA y BAJA. La prioridad afecta el orden visual en la cola de trabajo del dashboard (O-03 y D-02).
+
+**Cómo hacerlo:**
+1. En `app/(dashboard)/orders/[id]/actions.ts` (mismo archivo que O-05), agrega:
+   ```ts
+   export async function updateOrderPriority(orderId: string, priority: Priority) {
+     await requireSession()
+     await prisma.order.update({ where: { id: orderId }, data: { priority } })
+     revalidatePath(`/orders/${orderId}`)
+   }
+   ```
+2. En la UI del detalle, muestra un `<select>` o un grupo de botones (ALTA / MEDIA / BAJA) con el valor actual seleccionado. Al cambiar, envía la acción.
+3. No requiere confirmación — es un cambio trivial y reversible.
+
+### O-08 — Cierre de orden
+
+**Qué construir:** El técnico puede cerrar una orden que esté en estado `LISTO` marcándola como `ENTREGADO`. Por ser una acción irreversible (estado final), requiere confirmación explícita del usuario antes de ejecutarse.
+
+**Cómo hacerlo:**
+1. En la página de detalle, si la orden está en estado `LISTO`, mostrar el botón "Marcar como entregado" (destructivo/prominente).
+2. Al hacer clic, abrir un diálogo de confirmación (`AlertDialog` de shadcn) con el mensaje: _"¿Confirmar entrega de la orden #N? Esta acción no se puede deshacer."_
+3. El botón de confirmar dentro del diálogo ejecuta la Server Action `updateOrderStatus(orderId, "ENTREGADO")` de O-05.
+4. No crear una acción separada — reutiliza la de O-05 que ya valida la transición y crea el log.
 
 ---
 
@@ -80,9 +284,97 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 | D-05 | Página de historial de cliente (todas sus órdenes) | DA | `feature/D-05-client-history` | RF-12 | ⬜ |
 
 **Guías:**
-- D-01: Server Component con `prisma.order.groupBy({ by: ["status"], _count: true })`. Las tarjetas de estadísticas ya tienen el placeholder en `app/(dashboard)/dashboard/page.tsx`.
-- D-03: Días hábiles = lunes a viernes. Implementa la función pura en `lib/business-days.ts` y escribe un test en `__tests__/unit/`.
-- D-05: `app/(dashboard)/clients/[id]/page.tsx`. Obtén el cliente con sus órdenes usando `prisma.client.findUniqueOrThrow({ where: { id }, include: { orders: true } })`.
+
+### D-01 — Tarjetas de estadísticas
+
+**Qué construir:** Las 4 tarjetas en la parte superior del dashboard muestran números reales obtenidos de la base de datos: cuántas órdenes están activas (no finalizadas), cuántas se ingresaron hoy, cuántas llevan más de 10 días hábiles sin cambio (alerta), y cuántas se completaron hoy.
+
+**Cómo hacerlo:**
+1. En `app/(dashboard)/dashboard/page.tsx` (Server Component), reemplaza los valores `"—"` con consultas reales:
+   ```ts
+   const [activas, ingresadasHoy, completadasHoy] = await Promise.all([
+     prisma.order.count({ where: { status: { notIn: ["ENTREGADO", "SIN_REPARACION"] } } }),
+     prisma.order.count({ where: { createdAt: { gte: startOfToday() } } }),
+     prisma.order.count({ where: { status: { in: ["ENTREGADO", "SIN_REPARACION"] }, updatedAt: { gte: startOfToday() } } }),
+   ])
+   ```
+2. Para `startOfToday()` usa `new Date()` con horas en 0: `new Date(new Date().setHours(0,0,0,0))`.
+3. La tarjeta "Con alerta" depende de D-03 — déjala en `"—"` por ahora y conéctala cuando D-03 esté listo.
+
+### D-02 — Cola de trabajo
+
+**Qué construir:** Una tabla en el dashboard que muestra todas las órdenes activas (estados que no son `ENTREGADO` ni `SIN_REPARACION`), ordenadas por prioridad (ALTA primero) y luego por fecha de ingreso (más antiguas primero, ya que llevan más tiempo esperando).
+
+**Columnas:** N° | Cliente | Equipo | Estado | Prioridad | Días activa
+
+**Cómo hacerlo:**
+1. Consulta en `app/(dashboard)/dashboard/page.tsx`:
+   ```ts
+   const ordenes = await prisma.order.findMany({
+     where: { status: { notIn: ["ENTREGADO", "SIN_REPARACION"] } },
+     include: { client: true, technician: true },
+     orderBy: [
+       { priority: "asc" },   // ALTA < BAJA alfabéticamente, necesitas mapear
+       { createdAt: "asc" },
+     ],
+   })
+   ```
+   > Nota: Prisma ordena enums por su valor string. Para ALTA → MEDIA → BAJA, necesitas ordenar en la app: `["ALTA","MEDIA","BAJA"].indexOf(order.priority)`.
+2. La columna "Días activa" es `Math.floor((Date.now() - order.createdAt.getTime()) / 86_400_000)`.
+3. Cada fila navega a `/orders/[id]` al hacer clic.
+
+### D-03 — Lógica de alerta de tiempo
+
+**Qué construir:** Una función que determina si una orden lleva más de 10 días hábiles (lunes a viernes, sin contar fines de semana) sin cambiar de estado. Esta función es la base para D-04 y D-01 (tarjeta de alertas).
+
+**Cómo hacerlo:**
+1. Crea `lib/business-days.ts` con una función pura:
+   ```ts
+   export function businessDaysBetween(from: Date, to: Date): number {
+     // Contar días lunes a viernes entre from y to
+   }
+   
+   export function isOrderOverdue(lastUpdated: Date, thresholdDays = 10): boolean {
+     return businessDaysBetween(lastUpdated, new Date()) > thresholdDays
+   }
+   ```
+2. Escribe tests en `__tests__/unit/business-days.test.ts` — casos a cubrir: fechas dentro de la misma semana, cruce de fin de semana, exactamente 10 días, 11 días.
+3. Usa `order.updatedAt` como la fecha del último cambio (Prisma lo actualiza automáticamente en cada `update`).
+
+### D-04 — Badges de alerta
+
+**Qué construir:** Las órdenes que superan los 10 días hábiles sin cambio deben visualizarse de forma destacada. En la tabla de órdenes (`/orders`) y en la cola de trabajo del dashboard, estas órdenes muestran un badge o ícono de advertencia (ej: ícono de triángulo amarillo + texto "10+ días").
+
+**Cómo hacerlo:**
+1. Importa `isOrderOverdue` de `lib/business-days.ts` (depende de D-03).
+2. En la tabla de `app/(dashboard)/orders/page.tsx`, agrega una columna o indicador visual:
+   ```tsx
+   {isOrderOverdue(order.updatedAt) && (
+     <Badge variant="destructive">⚠ {días} días</Badge>
+   )}
+   ```
+3. Aplica el mismo patrón en la cola de D-02.
+4. En D-01, ya puedes conectar la tarjeta "Con alerta": cuenta las órdenes activas donde `isOrderOverdue(order.updatedAt)` sea true.
+
+### D-05 — Historial de cliente
+
+**Qué construir:** Al hacer clic en el nombre de un cliente (desde la lista de órdenes o el detalle), se navega a `/clients/[id]` que muestra los datos del cliente y todas las órdenes que ha tenido, ordenadas por fecha.
+
+**Cómo hacerlo:**
+1. Crea `app/(dashboard)/clients/[id]/page.tsx`:
+   ```ts
+   const client = await prisma.client.findUniqueOrThrow({
+     where: { id: params.id },
+     include: {
+       orders: {
+         include: { technician: true },
+         orderBy: { createdAt: "desc" },
+       },
+     },
+   })
+   ```
+2. Muestra: nombre, cédula, teléfono del cliente, y debajo una tabla de sus órdenes con columnas: N° | Equipo | Estado | Técnico | Fecha.
+3. En la tabla de órdenes (O-03) y en el detalle (O-04), convierte el nombre del cliente en un link `<Link href={`/clients/${order.clientId}`}>`.
 
 ---
 
@@ -96,9 +388,68 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 | R-02 | Filtro por rango de fechas + exportar | DA | `feature/R-02-date-report` | RF-18 | ⬜ |
 
 **Guías:**
-- P-01: Usa `@react-pdf/renderer` o genera HTML y usa el diálogo de impresión del navegador. El comprobante debe incluir: número de orden, fecha, nombre/teléfono/cédula del cliente, marca/modelo/serie, descripción de la falla, extras, nombre del técnico, estado.
-- P-01: Guarda el PDF en MinIO bajo `receipts/{orderId}/receipt.pdf` usando el endpoint `/api/upload`.
-- R-01 y R-02: Solo ADMIN. El admin layout ya aplica `requireAdmin()` — no necesitas protegerlos de nuevo.
+
+### P-01 — Generación de comprobante PDF
+
+**Qué construir:** Al registrar una orden, el cliente recibe un comprobante impreso con los datos del equipo y la falla reportada. El comprobante se genera como PDF y se guarda en MinIO para poder imprimirlo en cualquier momento.
+
+**Contenido del comprobante** (equivalente al formulario físico actual):
+- Logo + nombre del taller (Martinez Devices SRL)
+- Número de orden (ej: `#1042`)
+- Fecha y hora de ingreso
+- Datos del cliente: nombre, cédula, teléfono
+- Datos del equipo: marca, modelo, número de serie
+- Descripción de la falla (tal como la describió el cliente)
+- Extras/accesorios incluidos
+- Nombre del técnico que recibió el equipo
+- Estado inicial: RECIBIDO
+- Espacio para firma del cliente
+
+**Cómo hacerlo:**
+1. Instala `@react-pdf/renderer`: `bun add @react-pdf/renderer`.
+2. Crea `lib/receipt-pdf.tsx` con el componente PDF usando la API de `@react-pdf/renderer` (`Document`, `Page`, `View`, `Text`, `Image`).
+3. Crea el Route Handler `app/api/orders/[id]/receipt/route.ts`:
+   - Llama `requireSession()`
+   - Obtiene la orden con cliente y técnico de Prisma
+   - Renderiza el PDF: `await renderToBuffer(<ReceiptDocument order={order} />)`
+   - Si no existe en MinIO, lo guarda: `await getUploadUrl("receipts/{orderId}/receipt.pdf", "application/pdf")`
+   - Devuelve el PDF como respuesta con `Content-Type: application/pdf`
+4. Guarda la key en MinIO bajo `receipts/{order.id}/receipt.pdf`.
+
+### P-02 — Botón de impresión en el detalle
+
+**Qué construir:** En la página de detalle de una orden (`/orders/[id]`), el botón "Imprimir comprobante" (ya existe deshabilitado) debe activarse y abrir/descargar el PDF generado en P-01.
+
+**Cómo hacerlo:**
+1. El botón hace `window.open(`/api/orders/${orderId}/receipt`, "_blank")` — el browser abre el PDF en una pestaña nueva donde el usuario puede imprimir con Ctrl+P.
+2. Es un componente cliente (`"use client"`) solo por el `onClick`. Extrae solo el botón como componente cliente, el resto de la página sigue siendo Server Component.
+3. Depende de P-01 — no implementar hasta que P-01 esté mergeado.
+
+### R-01 — Reporte diario
+
+**Qué construir:** Una página en `/admin/reports` (solo ADMIN) que muestra un resumen del día: cuántas órdenes se crearon, cuántas cambiaron de estado, y la lista de ambas con sus detalles.
+
+**Cómo hacerlo:**
+1. Crea `app/(dashboard)/admin/reports/page.tsx` (Server Component, protegido por el admin layout).
+2. Consultas:
+   ```ts
+   const hoy = new Date(new Date().setHours(0, 0, 0, 0))
+   const [creadas, actualizadas] = await Promise.all([
+     prisma.order.findMany({ where: { createdAt: { gte: hoy } }, include: { client: true, technician: true } }),
+     prisma.orderLog.findMany({ where: { createdAt: { gte: hoy } }, include: { order: { include: { client: true } }, user: true } }),
+   ])
+   ```
+3. Muestra dos secciones: "Órdenes ingresadas hoy" y "Cambios de estado hoy".
+
+### R-02 — Reporte por rango de fechas
+
+**Qué construir:** En la misma página de reportes, el admin puede seleccionar un rango de fechas (desde/hasta) y ver las órdenes creadas en ese período. Incluye botón para exportar como CSV.
+
+**Cómo hacerlo:**
+1. Agrega un `<form method="GET">` con dos `<input type="date">` (fecha inicio y fin) — funciona con Server Components via `searchParams`.
+2. Filtra con `createdAt: { gte: fechaInicio, lte: fechaFin }`.
+3. El botón "Exportar CSV" apunta a `GET /api/reports/export?from=...&to=...`. El Route Handler genera y devuelve un archivo `.csv` con `Content-Disposition: attachment; filename="reporte.csv"`.
+4. Solo ADMIN. Verifica con `requireAdmin()` en el Route Handler también — los Route Handlers son endpoints públicos.
 
 ---
 
