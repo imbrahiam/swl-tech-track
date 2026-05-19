@@ -18,55 +18,18 @@ type TeamMember = {
 }
 
 const TEAM: TeamMember[] = [
-  // BS — Project Leader
-  {
-    name: "Brahiam Montero",
-    email: "brahiam@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "ADMIN",
-  },
-  // DS — Requirements Analyst
-  {
-    name: "Diomarys Abad",
-    email: "diomarys@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
-  // LD — UX/UI Designer
-  {
-    name: "Lía Fernández",
-    email: "lia@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
-  // DA — Backend Developer
-  {
-    name: "Darvin Aquino",
-    email: "darvin@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
-  // CC — Frontend Developer
-  {
-    name: "Carlos Veras",
-    email: "carlos@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
-  // TG — QA Tester
-  {
-    name: "Thanney García",
-    email: "thanney@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
-  // RP — Documentador / DBA
-  {
-    name: "Reynaldo Peña",
-    email: "reynaldo@techtrack.dev",
-    password: "TechTrack2026!",
-    role: "TECNICO",
-  },
+  // ── Team — all ADMIN so every member can access admin features during dev ──
+  { name: "Brahiam Montero", email: "brahiam@techtrack.dev",   password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Diomarys Abad",   email: "diomarys@techtrack.dev",  password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Lía Fernández",   email: "lia@techtrack.dev",       password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Darvin Aquino",   email: "darvin@techtrack.dev",    password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Carlos Veras",    email: "carlos@techtrack.dev",    password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Thanney García",  email: "thanney@techtrack.dev",   password: "TechTrack2026!", role: "ADMIN" },
+  { name: "Reynaldo Peña",   email: "reynaldo@techtrack.dev",  password: "TechTrack2026!", role: "ADMIN" },
+
+  // ── Fake TECNICO accounts — for debugging the TECNICO view ──────────────
+  { name: "Técnico Demo 1",  email: "tecnico1@techtrack.dev",  password: "TechTrack2026!", role: "TECNICO" },
+  { name: "Técnico Demo 2",  email: "tecnico2@techtrack.dev",  password: "TechTrack2026!", role: "TECNICO" },
 ]
 
 async function main() {
@@ -97,13 +60,11 @@ async function main() {
       continue
     }
 
-    // Set the correct role (Better Auth defaults to TECNICO; update ADMIN explicitly)
-    if (member.role === "ADMIN") {
-      await prisma.user.update({
-        where: { id: result.user.id },
-        data: { role: "ADMIN" },
-      })
-    }
+    // Always set role explicitly — don't rely on Better Auth defaults
+    await prisma.user.update({
+      where: { id: result.user.id },
+      data: { role: member.role },
+    })
 
     console.log(`  ✓  Created ${member.role}: ${member.name} (${member.email})`)
   }
