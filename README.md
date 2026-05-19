@@ -66,17 +66,26 @@ Con eso es suficiente. **No necesitas instalar PostgreSQL ni Docker localmente.*
 
 ### Credenciales de desarrollo
 
-Cada miembro del equipo tiene su cuenta ya creada. Pídele a Brahiam la contraseña inicial.
+Cada miembro del equipo tiene su cuenta ya creada. Contraseña inicial: pídela a Brahiam.
+
+**Cuentas del equipo — todos con rol Admin** (para que cualquiera pueda acceder a todas las features durante desarrollo):
 
 | Correo | Rol |
 |--------|-----|
 | `brahiam@techtrack.dev` | Admin |
-| `diomarys@techtrack.dev` | Técnico |
-| `lia@techtrack.dev` | Técnico |
-| `darvin@techtrack.dev` | Técnico |
-| `carlos@techtrack.dev` | Técnico |
-| `thanney@techtrack.dev` | Técnico |
-| `reynaldo@techtrack.dev` | Técnico |
+| `diomarys@techtrack.dev` | Admin |
+| `lia@techtrack.dev` | Admin |
+| `darvin@techtrack.dev` | Admin |
+| `carlos@techtrack.dev` | Admin |
+| `thanney@techtrack.dev` | Admin |
+| `reynaldo@techtrack.dev` | Admin |
+
+**Cuentas de prueba — rol Técnico** (para debuggear la vista del técnico y features que apliquen solo al rol `TECNICO`):
+
+| Correo | Contraseña | Rol |
+|--------|------------|-----|
+| `tecnico1@techtrack.dev` | `TechTrack2026!` | Técnico |
+| `tecnico2@techtrack.dev` | `TechTrack2026!` | Técnico |
 
 ---
 
@@ -122,7 +131,7 @@ bun run check         # lint + typecheck juntos
 bun run db:generate   # Regenerar cliente Prisma (después de cambiar schema.prisma)
 bun run db:migrate    # Aplicar migraciones pendientes
 bun run db:studio     # Prisma Studio — explorador visual de la DB
-bun run db:seed       # Crear los 7 usuarios del equipo en la DB
+bun run db:seed       # Crear los 9 usuarios en la DB (7 equipo Admin + 2 demo Técnico)
 
 bun test              # Correr tests
 bunx vitest           # Tests en modo watch
