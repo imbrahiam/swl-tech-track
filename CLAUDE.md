@@ -366,19 +366,19 @@ export function NewOrderForm() {
 
 ```ts
 validators={{
-  // sync — runs on every change
-  onChange: ({ value }) => {
+  // sync — runs on blur (never onChange — fires while typing and annoys users)
+  onBlur: ({ value }) => {
     if (!value) return "Este campo es requerido"
     if (value.length < 3) return "Mínimo 3 caracteres"
     if (value.length > 100) return "Máximo 100 caracteres"
     return undefined // valid
   },
-  // async — runs on blur (e.g. check duplicate email)
-  onChangeAsync: async ({ value }) => {
+  // async — also on blur (e.g. check duplicate email)
+  onBlurAsync: async ({ value }) => {
     const exists = await checkEmailExists(value)
     return exists ? "Este correo ya está registrado" : undefined
   },
-  onChangeAsyncDebounceMs: 500, // debounce async validators
+  onBlurAsyncDebounceMs: 500,
 }}
 ```
 
