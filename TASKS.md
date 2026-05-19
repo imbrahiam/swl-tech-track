@@ -34,19 +34,16 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 
 ---
 
-## Fase 2 — Auth UI + Layout (22 may – 5 jun)
+## Fase 2 — Auth UI + Layout (22 may – 5 jun) — A-01, A-02, A-03 completados por BS en `main`
 
 | ID | Tarea | Responsable | Rama | RF | Estado |
 |----|-------|-------------|------|----|--------|
-| A-01 | Conectar formulario de login (email + Google OAuth funcional) | CC | `feature/A-01-login-form` | RF-13 | ⬜ |
-| A-02 | Sidebar de navegación responsivo (mobile + desktop) | CC | `feature/A-02-sidebar-responsive` | RF-14 | ⬜ |
-| A-03 | Menú de usuario en el sidebar (nombre, rol, cerrar sesión) | CC | `feature/A-03-user-menu` | RF-13 | ⬜ |
+| A-01 | Conectar formulario de login (email + Google OAuth funcional) | BS | `main` | RF-13 | ✅ |
+| A-02 | Sidebar de navegación responsivo (mobile + desktop) | BS | `main` | RF-14 | ✅ |
+| A-03 | Menú de usuario en el sidebar (nombre, email, cerrar sesión, tema) | BS | `main` | RF-13 | ✅ |
 | A-04 | Página de usuarios admin (lista, cambiar rol, desactivar) | DA | `feature/A-04-user-management` | RF-14, RF-15 | ⬜ |
 
 **Guías:**
-- A-01: Usa `signIn.email()` y `signIn.social({ provider: "google" })` desde `@/lib/auth-client`. El formulario ya existe en `app/(auth)/login/form.tsx` — conéctalo.
-- A-02: El sidebar base está en `components/nav-sidebar.tsx`. Maneja el estado colapsado/expandido con el componente `SidebarTrigger` de shadcn.
-- A-03: Usa `useSession()` de `@/lib/auth-client`. La UI del usuario ya tiene placeholder en `nav-sidebar.tsx`.
 - A-04: Usa `requireAdmin()` en `app/(dashboard)/admin/layout.tsx` (ya implementado). Obtén usuarios con `prisma.user.findMany()` en un Server Component.
 
 ---
