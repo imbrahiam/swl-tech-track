@@ -180,17 +180,21 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 - Extras/accesorios: `extras` (opcional, ej: "Incluye cargador y estuche")
 
 **Cómo hacerlo:**
-1. El formulario ya tiene estructura en `app/(dashboard)/orders/new/page.tsx` — conéctalo.
-2. Crea `app/(dashboard)/orders/new/actions.ts` con `"use server"`:
+1. El formulario usa **TanStack Form** (`@tanstack/react-form-nextjs`). Lee la sección "Forms — TanStack Form" en `CLAUDE.md` antes de empezar. Todos los mensajes de error van en español.
+2. Crea el componente `app/(dashboard)/orders/new/new-order-form.tsx` con `"use client"`. Importa `useForm` de `@tanstack/react-form-nextjs`. La página `page.tsx` es Server Component y solo renderiza este componente.
+3. Crea `app/(dashboard)/orders/new/actions.ts` con `"use server"`:
    ```ts
-   export async function createOrder(formData: FormData) {
+   export async function createOrder(data: {
+     clientId: string; brand: string; model: string
+     serial: string; faultDesc: string; extras?: string
+   }) {
      const session = await requireSession()
-     // Leer campos del formData
      // Si clientId está vacío, primero crear el cliente con prisma.client.create()
      // Luego crear la orden:
      await prisma.order.create({
        data: {
-         clientId, brand, model, serial, faultDesc, extras,
+         clientId: data.clientId, brand: data.brand, model: data.model,
+         serial: data.serial, faultDesc: data.faultDesc, extras: data.extras,
          status: "RECIBIDO",
          priority: "MEDIA",
          technicianId: session.user.id, // el técnico que crea la orden
@@ -201,8 +205,9 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
      redirect("/orders")
    }
    ```
-3. El técnico que crea la orden queda asignado automáticamente como `technicianId`. No hay selector de técnico en este formulario.
-4. Después de crear, redirigir a `/orders` — no mostrar toast.
+4. Llama `createOrder(form.state.values)` desde el `onSubmit` de TanStack Form — no uses `FormData`.
+5. El técnico que crea la orden queda asignado automáticamente como `technicianId`. No hay selector de técnico en este formulario.
+6. Después de crear, redirigir a `/orders` — no mostrar toast.
 
 ### O-03 — Tabla de órdenes
 

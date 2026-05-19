@@ -282,7 +282,169 @@ Upload flow: client → `POST /api/upload` (auth check + presigned URL) → clie
   - For destructive actions (close order), use a confirm dialog, not a toast.
 - **Components:** shadcn/ui in `components/ui/`. Copy them in; they're yours to modify.
 - **Color theme:** Follow the existing `globals.css` CSS variables. Don't hardcode colors.
-- **Forms:** HTML form + Server Action first. Add `"use client"` only if you need real-time validation.
+- **Forms:** Use TanStack Form (`@tanstack/react-form-nextjs`) for any form with more than 2 fields or custom validation. Plain HTML form + Server Action is only acceptable for trivial single-action forms (e.g., a single-button confirm).
+
+---
+
+## Forms — TanStack Form
+
+Package: `@tanstack/react-form-nextjs` (v1.x). All form components are Client Components (`"use client"`).
+
+### When to use TanStack Form vs plain HTML form
+
+| Situation | Use |
+|-----------|-----|
+| Multi-field form (≥ 2 fields), custom validation | **TanStack Form** |
+| Real-time field validation, cross-field dependencies | **TanStack Form** |
+| Single button / trivial no-validation form | Plain HTML + Server Action |
+
+### Basic pattern
+
+```tsx
+"use client"
+import { useForm } from "@tanstack/react-form-nextjs"
+
+export function NewOrderForm() {
+  const form = useForm({
+    defaultValues: {
+      clientName: "",
+      deviceModel: "",
+      issueDescription: "",
+    },
+    onSubmit: async ({ value }) => {
+      // call your Server Action here
+      await createOrder(value)
+    },
+  })
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        form.handleSubmit()
+      }}
+    >
+      <form.Field
+        name="clientName"
+        validators={{
+          onChange: ({ value }) =>
+            !value ? "El nombre del cliente es requerido" : undefined,
+        }}
+      >
+        {(field) => (
+          <div>
+            <label htmlFor={field.name}>Cliente</label>
+            <input
+              id={field.name}
+              value={field.state.value}
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+              <p className="text-sm text-destructive">
+                {field.state.meta.errors.join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+      </form.Field>
+
+      <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+        {([canSubmit, isSubmitting]) => (
+          <button type="submit" disabled={!canSubmit}>
+            {isSubmitting ? "Guardando..." : "Guardar"}
+          </button>
+        )}
+      </form.Subscribe>
+    </form>
+  )
+}
+```
+
+### Validation rules — all error messages in Spanish
+
+```ts
+validators={{
+  // sync — runs on every change
+  onChange: ({ value }) => {
+    if (!value) return "Este campo es requerido"
+    if (value.length < 3) return "Mínimo 3 caracteres"
+    if (value.length > 100) return "Máximo 100 caracteres"
+    return undefined // valid
+  },
+  // async — runs on blur (e.g. check duplicate email)
+  onChangeAsync: async ({ value }) => {
+    const exists = await checkEmailExists(value)
+    return exists ? "Este correo ya está registrado" : undefined
+  },
+  onChangeAsyncDebounceMs: 500, // debounce async validators
+}}
+```
+
+### Cross-field validation (form-level)
+
+```ts
+const form = useForm({
+  defaultValues: { password: "", confirm: "" },
+  validators: {
+    onChange: ({ value }) => {
+      if (value.password !== value.confirm) {
+        return { fields: { confirm: "Las contraseñas no coinciden" } }
+      }
+    },
+  },
+  ...
+})
+```
+
+### Showing errors
+
+Always gate on `isTouched` so errors don't flash before the user interacts:
+
+```tsx
+{field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+  <p className="text-sm text-destructive mt-1">
+    {field.state.meta.errors.join(", ")}
+  </p>
+)}
+```
+
+### Server Action integration
+
+TanStack Form handles client-side state. Call the Server Action inside `onSubmit`:
+
+```tsx
+import { createOrder } from "./actions" // "use server" file
+
+const form = useForm({
+  onSubmit: async ({ value }) => {
+    const result = await createOrder(value)
+    if (result?.error) {
+      // surface server error to user — don't use toast
+      form.setErrorMap({ onSubmit: result.error })
+    }
+  },
+})
+```
+
+Show form-level server errors near the submit button:
+
+```tsx
+<form.Subscribe selector={(s) => s.errorMap.onSubmit}>
+  {(err) => err && <p className="text-sm text-destructive">{String(err)}</p>}
+</form.Subscribe>
+```
+
+### Rules (agents must follow)
+
+- ❌ Never use `react-hook-form` — not installed, not approved
+- ❌ Never use uncontrolled inputs with `FormData` for validated forms — use TanStack Form
+- ✅ Error messages always in Spanish
+- ✅ Gate error display on `field.state.meta.isTouched`
+- ✅ Disable submit while `isSubmitting` is true
+- ✅ Call Server Action from `onSubmit`, not from a `useEffect`
+- ✅ Keep the Server Action in a separate `actions.ts` file with `"use server"` at the top
 
 ---
 

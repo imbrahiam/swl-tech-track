@@ -27,6 +27,7 @@ Reemplaza los formularios físicos en papel por un flujo digital completo: recep
 | Auth | Better Auth — email/contraseña + Google OAuth |
 | ORM | Prisma 7 |
 | Base de datos | PostgreSQL 16 (VPS compartido) |
+| Formularios | TanStack Form (`@tanstack/react-form-nextjs`) |
 | UI | shadcn/ui + Tailwind CSS v4 |
 | Almacenamiento | MinIO (S3) — bucket `techtrack` |
 | CDN de imágenes | imgproxy (`images.genlabs.us`) |
