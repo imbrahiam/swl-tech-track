@@ -52,7 +52,7 @@ export function RegisterForm() {
           <form.Field
             name="name"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 if (!value) return "El nombre es requerido"
                 if (value.trim().length < 2) return "Mínimo 2 caracteres"
                 return undefined
@@ -83,7 +83,7 @@ export function RegisterForm() {
           <form.Field
             name="email"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 if (!value) return "El correo es requerido"
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
                   return "Ingresa un correo válido"
@@ -115,7 +115,7 @@ export function RegisterForm() {
           <form.Field
             name="password"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 if (!value) return "La contraseña es requerida"
                 if (value.length < 8) return "Mínimo 8 caracteres"
                 return undefined

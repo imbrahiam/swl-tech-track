@@ -52,7 +52,7 @@ export function LoginForm() {
           <form.Field
             name="email"
             validators={{
-              onChange: ({ value }) => {
+              onBlur: ({ value }) => {
                 if (!value) return "El correo es requerido"
                 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
                   return "Ingresa un correo válido"
@@ -84,7 +84,7 @@ export function LoginForm() {
           <form.Field
             name="password"
             validators={{
-              onChange: ({ value }) =>
+              onBlur: ({ value }) =>
                 !value ? "La contraseña es requerida" : undefined,
             }}
           >
