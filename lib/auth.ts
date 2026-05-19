@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
-import { admin } from "better-auth/plugins"
+import { admin, haveIBeenPwned } from "better-auth/plugins"
 import { prisma } from "@/lib/prisma"
 
 export const auth = betterAuth({
@@ -21,6 +21,10 @@ export const auth = betterAuth({
   plugins: [
     admin({
       defaultRole: "TECNICO",
+    }),
+    haveIBeenPwned({
+      customPasswordCompromisedMessage:
+        "Esta contraseña fue filtrada en una brecha de datos conocida. Elige una contraseña diferente.",
     }),
   ],
   user: {
