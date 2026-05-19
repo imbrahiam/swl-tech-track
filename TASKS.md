@@ -62,6 +62,77 @@ Rama por tarea: `feature/<ID-tarea>-nombre-corto` → Pull Request → Brahiam r
 
 ---
 
+## Fase 2.5 — Especificaciones para desarrollo (22 may – 1 jun)
+
+> DS entrega estas especificaciones **antes** de que DA empiece O-02. Sin DS-01, DA no sabe qué validar.
+
+| ID | Tarea | Responsable | Entregable | RF | Estado |
+|----|-------|-------------|------------|-----|--------|
+| DS-01 | Especificación de validaciones del formulario de orden | DS | `docs/validaciones-formulario.md` en el repo | RF-01, RF-11 | ⬜ |
+| DS-02 | Especificación de casos de prueba por RF | DS | `docs/plan-de-pruebas.md` en el repo | Todos los RF | ⬜ |
+
+**Guías:**
+
+### DS-01 — Especificación de validaciones del formulario de orden
+
+**Por qué es necesario:** DA va a implementar el formulario de nueva orden (O-02) y el buscador de clientes (O-01). Sin esta especificación, no sabe qué formato es válido para la cédula, qué campos son obligatorios, ni qué mensaje mostrar cuando el usuario se equivoca. Este documento es su contrato.
+
+**Qué documentar** — crear `docs/validaciones-formulario.md` en el repositorio con esta estructura:
+
+**Sección 1 — Datos del cliente:**
+- `cédula`: formato dominicano `###-#######-#` (11 dígitos con guiones), obligatorio, debe ser único en el sistema
+- `teléfono`: formato `000-000-0000` o `0000000000` (10 dígitos), obligatorio
+- `nombre`: texto libre, mínimo 3 caracteres, máximo 100, obligatorio
+
+**Sección 2 — Datos del equipo:**
+- `marca`: texto libre, obligatorio, máximo 50 caracteres (ej: Samsung, Apple, HP, Lenovo)
+- `modelo`: texto libre, obligatorio, máximo 100 caracteres (ej: Galaxy A54, MacBook Air M2)
+- `serie`: texto libre, **opcional**, máximo 100 caracteres — muchos equipos no tienen serie visible
+- `descripción de la falla`: texto libre, obligatorio, mínimo 10 caracteres, máximo 500 — debe ser lo suficientemente descriptivo
+
+**Sección 3 — Campos opcionales:**
+- `extras/accesorios`: texto libre, opcional, máximo 200 caracteres (ej: "Incluye cargador original y funda")
+
+**Sección 4 — Mensajes de error** — especificar el texto exacto que verá el usuario para cada error:
+- Campo obligatorio vacío: "Este campo es requerido"
+- Cédula con formato inválido: "La cédula debe tener el formato 000-0000000-0"
+- Cédula ya registrada para otro cliente: "Ya existe un cliente con esta cédula — búscalo por cédula para continuar"
+- Descripción muy corta: "Describe la falla con al menos 10 caracteres"
+
+### DS-02 — Plan de pruebas
+
+**Por qué es necesario:** TG tiene que ejecutar el plan de pruebas en la Fase 6 (Q-01), pero TG no escribe los casos — DS los escribe. Sin este documento, Q-01 no puede empezar. Entregar antes del 1 de junio para que TG lo revise y pueda agregar casos adicionales.
+
+**Qué documentar** — crear `docs/plan-de-pruebas.md` con casos de prueba para cada RF. Estructura de cada caso:
+
+```
+| CP-XX | Nombre del caso |
+|-------|-----------------|
+| RF relacionado | RF-01 |
+| Precondición | El técnico tiene sesión activa |
+| Pasos | 1. Ir a Nueva Orden. 2. Dejar cédula vacía. 3. Hacer clic en Guardar. |
+| Resultado esperado | Se muestra el mensaje "Este campo es requerido" debajo del campo cédula |
+| Resultado real | (llenar en fase QA) |
+| Estado | ⬜ |
+```
+
+**Casos mínimos a cubrir:**
+- Registro exitoso de una orden con todos los datos correctos (CA-01)
+- Registro de orden con cliente existente (cédula ya en sistema)
+- Registro de orden con cliente nuevo
+- Intento de guardar orden con campos obligatorios vacíos
+- Cambio de estado siguiendo el flujo correcto (todos los pasos del flujo)
+- Intento de cambio de estado inválido (ej: de RECIBIDO directo a LISTO)
+- Acceso a ruta protegida sin sesión → redirige a login (CA-06)
+- Acceso a `/admin` con rol TECNICO → redirige a dashboard
+- Generación e impresión del comprobante PDF (CA-03)
+- Verificar que el log registra usuario y timestamp en cada cambio (CA-07)
+- Orden con más de 10 días sin cambio aparece resaltada (CA-05)
+- Login con email/contraseña
+- Login con Google OAuth (CA-08)
+
+---
+
 ## Fase 3 — Órdenes (2 jun – 27 jun)
 
 | ID | Tarea | Responsable | Rama | RF | Estado |
@@ -457,7 +528,7 @@ LISTO → ENTREGADO
 
 | ID | Tarea | Responsable | Rama | Estado |
 |----|-------|-------------|------|--------|
-| Q-01 | Ejecución del plan de pruebas (todos los CA-xx) | TG | `feature/Q-01-test-plan` | ⬜ |
+| Q-01 | Ejecución del plan de pruebas (todos los CA-xx) — usa `docs/plan-de-pruebas.md` de DS-02 | TG | `feature/Q-01-test-plan` | ⬜ |
 | Q-02 | Registro y seguimiento de bugs | TG | Issues del repo | ⬜ |
 | Q-03 | Revisión de responsividad (móvil y tablet) | LD | `feature/Q-03-responsive` | ⬜ |
 | Q-04 | Revisión de accesibilidad (labels, contraste, teclado) | LD | `feature/Q-04-accessibility` | ⬜ |
@@ -527,6 +598,9 @@ Fase 7   |        |        |        |        |        |        |        |       
 | TG | Thanney García | QA / Tester |
 | RP | Reynaldo Peña | Documentador / DBA |
 
-**DS** contribuye en: revisión de que las features implementadas cumplen los requerimientos del ERS, escritura de casos de prueba para Q-01.
+**DS** tiene tres entregas concretas:
+1. **DS-01** (antes del 1 jun): `docs/validaciones-formulario.md` — reglas de validación exactas para todos los campos del formulario de orden. DA no puede terminar O-02 sin esto.
+2. **DS-02** (antes del 1 jun): `docs/plan-de-pruebas.md` — casos de prueba detallados para cada RF. TG ejecuta este plan en Q-01; sin DS-02, Q-01 no puede empezar.
+3. **Revisión de PRs** (Fases 3–5, continuo): cuando se mergea una feature, DS la revisa contra el RF correspondiente y abre un Issue en GitHub si algo no cumple lo especificado. Esto garantiza que lo que se construye coincide con lo que se pidió.
 **LD** contribuye en: especificaciones de diseño (Figma o mockups anotados) antes de la Fase 2, revisiones de Q-03 y Q-04.
 **RP** contribuye en: documentación Q-05, seguimiento de cambios al schema de DB, revisión de que las migraciones están correctamente documentadas.
