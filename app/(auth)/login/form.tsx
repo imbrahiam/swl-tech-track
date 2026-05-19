@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useForm } from "@tanstack/react-form-nextjs"
 import { signIn } from "@/lib/auth-client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,29 +12,24 @@ import { Separator } from "@/components/ui/separator"
 
 export function LoginForm() {
   const router = useRouter()
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setError(null)
-    setLoading(true)
-
-    const form = e.currentTarget
-    const email = (form.elements.namedItem("email") as HTMLInputElement).value
-    const password = (form.elements.namedItem("password") as HTMLInputElement).value
-
-    const result = await signIn.email({ email, password })
-
-    if (result.error) {
-      setError("Correo o contraseña incorrectos.")
-      setLoading(false)
-      return
-    }
-
-    router.push("/dashboard")
-    router.refresh()
-  }
+  const form = useForm({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    onSubmit: async ({ value }) => {
+      setAuthError(null)
+      const result = await signIn.email({ email: value.email, password: value.password })
+      if (result.error) {
+        setAuthError("Correo o contraseña incorrectos.")
+        return
+      }
+      router.push("/dashboard")
+      router.refresh()
+    },
+  })
 
   async function handleGoogle() {
     await signIn.social({ provider: "google", callbackURL: "/dashboard" })
@@ -45,36 +41,84 @@ export function LoginForm() {
         <CardTitle className="text-base">Iniciar sesión</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo electrónico</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="nombre@empresa.com"
-              required
-              autoComplete="email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-            />
-          </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            form.handleSubmit()
+          }}
+          className="space-y-4"
+        >
+          <form.Field
+            name="email"
+            validators={{
+              onChange: ({ value }) => {
+                if (!value) return "El correo es requerido"
+                if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+                  return "Ingresa un correo válido"
+                return undefined
+              },
+            }}
+          >
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Correo electrónico</Label>
+                <Input
+                  id={field.name}
+                  type="email"
+                  placeholder="nombre@empresa.com"
+                  autoComplete="email"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+                  <p className="text-sm text-destructive">
+                    {field.state.meta.errors.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+          </form.Field>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
+          <form.Field
+            name="password"
+            validators={{
+              onChange: ({ value }) =>
+                !value ? "La contraseña es requerida" : undefined,
+            }}
+          >
+            {(field) => (
+              <div className="space-y-2">
+                <Label htmlFor={field.name}>Contraseña</Label>
+                <Input
+                  id={field.name}
+                  type="password"
+                  autoComplete="current-password"
+                  value={field.state.value}
+                  onBlur={field.handleBlur}
+                  onChange={(e) => field.handleChange(e.target.value)}
+                />
+                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
+                  <p className="text-sm text-destructive">
+                    {field.state.meta.errors.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+          </form.Field>
+
+          {authError && (
+            <p className="text-sm text-destructive">{authError}</p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Ingresando..." : "Ingresar"}
-          </Button>
+          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+            {([canSubmit, isSubmitting]) => (
+              <Button type="submit" className="w-full" disabled={!canSubmit}>
+                {isSubmitting ? "Ingresando..." : "Ingresar"}
+              </Button>
+            )}
+          </form.Subscribe>
         </form>
 
         <div className="relative">

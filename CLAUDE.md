@@ -412,28 +412,31 @@ Always gate on `isTouched` so errors don't flash before the user interacts:
 
 ### Server Action integration
 
-TanStack Form handles client-side state. Call the Server Action inside `onSubmit`:
+TanStack Form handles client-side state. Call the Server Action inside `onSubmit`. Use `useState` for server/API errors — `setErrorMap` has a narrow type signature that doesn't accept plain strings in v1.x:
 
 ```tsx
+import { useState } from "react"
 import { createOrder } from "./actions" // "use server" file
+
+const [serverError, setServerError] = useState<string | null>(null)
 
 const form = useForm({
   onSubmit: async ({ value }) => {
+    setServerError(null)
     const result = await createOrder(value)
     if (result?.error) {
-      // surface server error to user — don't use toast
-      form.setErrorMap({ onSubmit: result.error })
+      setServerError(result.error) // surface server error — don't use toast
     }
   },
 })
 ```
 
-Show form-level server errors near the submit button:
+Render near the submit button:
 
 ```tsx
-<form.Subscribe selector={(s) => s.errorMap.onSubmit}>
-  {(err) => err && <p className="text-sm text-destructive">{String(err)}</p>}
-</form.Subscribe>
+{serverError && (
+  <p className="text-sm text-destructive">{serverError}</p>
+)}
 ```
 
 ### Rules (agents must follow)
