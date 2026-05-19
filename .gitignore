@@ -1,0 +1,63 @@
+# ── Dependencies ────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.*
+
+# ── Environment — NEVER commit these ───────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Next.js ─────────────────────────────────────────────────────
+.next/
+out/
+
+# ── Prisma generated client ─────────────────────────────────────
+# Regenerated locally with: bun run db:generate
+generated/
+
+# ── Build output ────────────────────────────────────────────────
+build/
+dist/
+
+# ── Testing ─────────────────────────────────────────────────────
+coverage/
+
+# ── OS ──────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# ── Editors ─────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ── TypeScript ──────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Logs ────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+bun-error.log*
+
+# ── Bun ─────────────────────────────────────────────────────────
+# Keep bun.lock committed — it's the source of truth for installs
+# Do NOT add bun.lock here
+
+# ── Certificates ────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+
+# ── Misc ────────────────────────────────────────────────────────
+.vercel
+.turbo

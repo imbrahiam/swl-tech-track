@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────
+// Better Auth — required tables (do not rename fields)
+// ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  role          Role      @default(TECNICO)
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime?
+
+  sessions Session[]
+  accounts Account[]
+
+  // TechTrack relations
+  ordersCreated Order[]    @relation("TechnicianOrders")
+  orderLogs     OrderLog[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// ─────────────────────────────────────────────────────────────
+// TechTrack domain models
+// ─────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  TECNICO
+}
+
+enum OrderStatus {
+  RECIBIDO
+  EN_DIAGNOSTICO
+  ESPERANDO_APROBACION
+  EN_REPARACION
+  LISTO
+  ENTREGADO
+  SIN_REPARACION
+}
+
+enum Priority {
+  ALTA
+  MEDIA
+  BAJA
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  cedula    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@map("client")
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  number       Int         @unique @default(autoincrement())
+  clientId     String
+  client       Client      @relation(fields: [clientId], references: [id])
+  brand        String
+  model        String
+  serial       String?
+  faultDesc    String
+  extras       String?
+  status       OrderStatus @default(RECIBIDO)
+  priority     Priority    @default(MEDIA)
+  technicianId String
+  technician   User        @relation("TechnicianOrders", fields: [technicianId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  logs OrderLog[]
+
+  @@map("order")
+}
+
+model OrderLog {
+  id             String       @id @default(cuid())
+  orderId        String
+  order          Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  previousStatus OrderStatus?
+  newStatus      OrderStatus
+  comment        String?
+  createdAt      DateTime     @default(now())
+
+  @@map("order_log")
+}
