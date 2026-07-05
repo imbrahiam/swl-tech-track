@@ -1,5 +1,4 @@
 import Link from "next/link"
-import Image from "next/image"
 import { notFound } from "next/navigation"
 import { Pencil, Printer } from "lucide-react"
 import { getNextStatuses, isFinalStatus } from "@/lib/order-transitions"
@@ -12,6 +11,7 @@ import {
   statusLabels,
 } from "@/lib/format"
 import { getImageUrl } from "@/lib/storage"
+import { OrderImage } from "@/components/order-image"
 import { PriorityBadge, StatusBadge } from "@/components/order-badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,13 +100,10 @@ export default async function OrderDetailPage({
               </div>
               {order.imageKey && (
                 <div className="sm:col-span-2">
-                  <Image
-                    src={getImageUrl(order.imageKey, 900, 600)}
+                  <OrderImage
+                    thumbSrc={getImageUrl(order.imageKey, 900, 600)}
+                    fullSrc={getImageUrl(order.imageKey, 1600, 1200)}
                     alt={`${order.brand} ${order.model}`}
-                    width={900}
-                    height={600}
-                    unoptimized
-                    className="max-h-96 w-full rounded-md bg-muted object-contain"
                   />
                 </div>
               )}
