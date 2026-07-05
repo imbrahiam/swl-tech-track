@@ -38,13 +38,16 @@ export async function POST(req: NextRequest) {
   }
 
   if (!ALLOWED_TYPES.includes(contentType)) {
-    return NextResponse.json({ error: "File type not allowed" }, { status: 400 })
+    return NextResponse.json(
+      { error: "File type not allowed" },
+      { status: 400 }
+    )
   }
 
   if (size > MAX_SIZE_MB * 1024 * 1024) {
     return NextResponse.json(
       { error: `File exceeds ${MAX_SIZE_MB}MB limit` },
-      { status: 400 },
+      { status: 400 }
     )
   }
 

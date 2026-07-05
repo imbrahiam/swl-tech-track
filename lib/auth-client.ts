@@ -8,10 +8,4 @@ export const authClient = createAuthClient({
 
 // Named exports for common operations — use these instead of authClient directly.
 // They keep call sites clean and make refactoring easy.
-export const {
-  signIn,
-  signOut,
-  signUp,
-  useSession,
-  getSession,
-} = authClient
+export const { signIn, signOut, signUp, useSession, getSession } = authClient

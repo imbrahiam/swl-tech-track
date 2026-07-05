@@ -1,59 +1,90 @@
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { prisma } from "@/lib/prisma"
+import { requireAdmin } from "@/lib/session"
+import { formatDate } from "@/lib/format"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import { UserPlus } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { updateUser } from "./actions"
 
-export const metadata = { title: "Usuarios — TechTrack MD" }
-
-export default function UsersPage() {
+export const metadata = { title: "Usuarios — TechTrack" }
+export default async function UsersPage() {
+  const session = await requireAdmin()
+  const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" } })
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <h1 className="text-xl font-semibold">Usuarios</h1>
-          <Badge variant="secondary" className="ml-1">Solo Admin</Badge>
-        </div>
-        {/* TODO (A-04 / DA): Trigger invite user dialog */}
-        <Button size="sm" disabled>
-          <UserPlus className="h-4 w-4" />
-          Invitar usuario
-        </Button>
+    <div className="space-y-6 p-4 md:p-8">
+      <div>
+        <h1 className="text-2xl font-semibold">Usuarios</h1>
+        <p className="text-sm text-muted-foreground">
+          Roles y acceso al sistema.
+        </p>
       </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Gestión de usuarios</CardTitle>
-          <CardDescription>
-            Administra roles y acceso del equipo — RF-14, RF-15
-          </CardDescription>
+          <CardTitle>{users.length} usuarios</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* TODO (A-04 / DA): prisma.user.findMany() in a Server Component, allow role change + deactivation */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded border border-dashed p-3 text-sm text-muted-foreground">
-              <Badge variant="outline">Pendiente</Badge>
-              <span>Tarea A-04 — Lista de usuarios con cambio de rol y desactivación</span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
-              <span>Nombre</span>
-              <span>Correo</span>
-              <span>Rol</span>
-              <span>Acciones</span>
-            </div>
-
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-4 items-center gap-3">
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-36" />
-                <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-7 w-20 rounded" />
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Correo</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Registro</TableHead>
+                <TableHead>Acción</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{user.role}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={user.banned ? "destructive" : "secondary"}>
+                      {user.banned ? "Desactivado" : "Activo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{formatDate(user.createdAt)}</TableCell>
+                  <TableCell>
+                    <form action={updateUser} className="flex gap-2">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input
+                        type="hidden"
+                        name="banned"
+                        value={user.banned ? "false" : "true"}
+                      />
+                      <select
+                        name="role"
+                        defaultValue={user.role}
+                        className="h-8 rounded-md border bg-background px-2 text-xs"
+                      >
+                        <option value="ADMIN">Admin</option>
+                        <option value="TECNICO">Técnico</option>
+                      </select>
+                      <Button
+                        size="sm"
+                        variant={user.banned ? "secondary" : "outline"}
+                        disabled={user.id === session.user.id}
+                      >
+                        {user.banned ? "Reactivar" : "Desactivar"}
+                      </Button>
+                    </form>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

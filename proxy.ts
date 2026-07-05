@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const isPublic = PUBLIC_PATHS.some(
-    (path) => pathname === path || pathname.startsWith(path + "/"),
+    (path) => pathname === path || pathname.startsWith(path + "/")
   )
 
   if (isPublic) {

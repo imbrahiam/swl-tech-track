@@ -27,10 +27,11 @@ function ThemeProvider({
  */
 function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
-
-  // Avoid hydration mismatch — only render icon after mount
-  React.useEffect(() => setMounted(true), [])
+  const mounted = React.useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  )
 
   if (!mounted) {
     return (

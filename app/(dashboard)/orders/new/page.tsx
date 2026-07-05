@@ -1,122 +1,106 @@
-import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { createOrder } from "./actions"
+import { ClientSearch } from "@/components/client-search"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export const metadata = { title: "Nueva orden — TechTrack MD" }
+export const metadata = { title: "Nueva orden — TechTrack" }
 
 export default function NewOrderPage() {
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
+    <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
+      <div className="flex items-center gap-3">
+        <Button asChild variant="ghost" size="icon">
           <Link href="/orders">
-            <ArrowLeft className="h-4 w-4" />
-            Volver
+            <ArrowLeft />
           </Link>
         </Button>
-        <h1 className="text-xl font-semibold">Nueva orden</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">Nueva orden</h1>
+          <p className="text-sm text-muted-foreground">
+            Registra la recepción del equipo.
+          </p>
+        </div>
       </div>
-
-      {/* TODO (O-01 / DA): Add client autocomplete component here */}
-      <div className="flex items-center gap-2 rounded border border-dashed p-3 text-sm text-muted-foreground">
-        <Badge variant="outline">Pendiente</Badge>
-        <span>Tarea O-01 — Autocompletado de cliente por cédula/teléfono</span>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+      <form action={createOrder} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Datos del cliente</CardTitle>
-            <CardDescription>
-              Ingresa la cédula o teléfono para buscar un cliente existente
-            </CardDescription>
+            <CardTitle>Cliente</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cedula">Cédula</Label>
-                <Input id="cedula" name="cedula" placeholder="001-0000000-0" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono</Label>
-                <Input id="telefono" name="telefono" placeholder="809-000-0000" />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre completo</Label>
-              <Input id="nombre" name="nombre" placeholder="Juan Pérez" required />
-            </div>
+          <CardContent>
+            <ClientSearch />
           </CardContent>
         </Card>
-
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Datos del equipo</CardTitle>
+            <CardTitle>Equipo y servicio</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="marca">Marca</Label>
-                <Input id="marca" name="marca" placeholder="Dell, HP, Apple..." required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="modelo">Modelo</Label>
-                <Input id="modelo" name="modelo" placeholder="Latitude 5420" required />
-              </div>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="brand">Marca *</Label>
+              <Input id="brand" name="brand" maxLength={50} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="serie">Número de serie</Label>
-              <Input id="serie" name="serie" placeholder="SN1234567" />
+              <Label htmlFor="model">Modelo *</Label>
+              <Input id="model" name="model" maxLength={100} required />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Descripción del servicio</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="falla">Descripción de la falla</Label>
+              <Label htmlFor="serial">Número de serie</Label>
+              <Input id="serial" name="serial" maxLength={100} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priority">Prioridad</Label>
+              <select
+                id="priority"
+                name="priority"
+                defaultValue="MEDIA"
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                <option value="ALTA">Alta</option>
+                <option value="MEDIA">Media</option>
+                <option value="BAJA">Baja</option>
+              </select>
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="faultDesc">Falla reportada *</Label>
               <Textarea
-                id="falla"
-                name="falla"
-                placeholder="Describe el problema que reporta el cliente..."
-                rows={3}
+                id="faultDesc"
+                name="faultDesc"
+                minLength={10}
+                maxLength={500}
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="extras">Extras dejados</Label>
-              <Input id="extras" name="extras" placeholder="Cargador, funda, mouse..." />
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="extras">Accesorios incluidos</Label>
+              <Input id="extras" name="extras" maxLength={200} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="image">Foto del equipo</Label>
+              <Input
+                id="image"
+                name="image"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+              />
               <p className="text-xs text-muted-foreground">
-                Accesorios que el cliente deja junto al equipo
+                Máximo 10 MB. Una nueva carga reemplaza la anterior sin crear
+                duplicados.
               </p>
             </div>
           </CardContent>
         </Card>
-      </div>
-
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" asChild>
-          <Link href="/orders">Cancelar</Link>
-        </Button>
-        {/* TODO (O-02 / DA): Wire to createOrder Server Action in ./actions.ts */}
-        <Button type="submit" disabled>
-          Registrar orden
-        </Button>
-      </div>
-
-      <p className="text-right text-xs text-muted-foreground">
-        Tarea O-02 — Conectar formulario a Server Action <code>createOrder</code>
-      </p>
+        <div className="flex justify-end gap-3">
+          <Button asChild variant="outline">
+            <Link href="/orders">Cancelar</Link>
+          </Button>
+          <Button type="submit">Crear orden</Button>
+        </div>
+      </form>
     </div>
   )
 }

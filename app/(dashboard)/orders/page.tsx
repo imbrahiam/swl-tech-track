@@ -1,63 +1,146 @@
 import Link from "next/link"
-import { Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ORDER_STATUSES, type OrderStatus } from "@/lib/domain"
+import { prisma } from "@/lib/prisma"
+import { businessDaysBetween, isOrderOverdue } from "@/lib/business-days"
+import { formatDate, formatOrderNumber, statusLabels } from "@/lib/format"
+import { StatusBadge } from "@/components/order-badge"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
-export const metadata = { title: "Órdenes — TechTrack MD" }
+export const metadata = { title: "Órdenes — TechTrack" }
+const statuses = ORDER_STATUSES
 
-export default function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; status?: string }>
+}) {
+  const { q = "", status = "" } = await searchParams
+  const numeric = Number(q.replace("#", ""))
+  const orders = await prisma.order.findMany({
+    where: {
+      ...(status && statuses.includes(status as OrderStatus)
+        ? { status: status as OrderStatus }
+        : {}),
+      ...(q
+        ? {
+            OR: [
+              { client: { name: { contains: q } } },
+              { brand: { contains: q } },
+              ...(!Number.isNaN(numeric) ? [{ number: numeric }] : []),
+            ],
+          }
+        : {}),
+    },
+    include: { client: true, technician: true },
+    orderBy: { createdAt: "desc" },
+  })
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <h1 className="text-xl font-semibold">Órdenes</h1>
+    <div className="space-y-6 p-4 md:p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Órdenes</h1>
+          <p className="text-sm text-muted-foreground">
+            Consulta y gestiona los servicios.
+          </p>
         </div>
-        <Button asChild size="sm">
-          <Link href="/orders/new">
-            <Plus className="h-4 w-4" />
-            Nueva orden
-          </Link>
+        <Button asChild>
+          <Link href="/orders/new">Nueva orden</Link>
         </Button>
       </div>
-
-      {/* Order table — RF-02, RF-08 */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de órdenes</CardTitle>
-          <CardDescription>Todas las órdenes activas del taller</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* TODO (O-03 / CC): Implement order list with search, filters, status badges */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded border border-dashed p-3 text-sm text-muted-foreground">
-              <Badge variant="outline">Pendiente</Badge>
-              <span>Tarea O-03 — Tabla de órdenes con búsqueda y filtros por estado/prioridad</span>
-            </div>
-
-            <div className="grid grid-cols-5 gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
-              <span># Orden</span>
-              <span>Cliente</span>
-              <span>Equipo</span>
-              <span>Estado</span>
-              <span>Prioridad</span>
-            </div>
-
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-5 gap-3">
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-28" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-5 w-20 rounded-full" />
-                <Skeleton className="h-5 w-12 rounded-full" />
-              </div>
+      <form className="flex flex-col gap-3 sm:flex-row">
+        <Input
+          name="q"
+          defaultValue={q}
+          placeholder="N.º, cliente o equipo"
+          className="max-w-md"
+        />
+        <select
+          name="status"
+          defaultValue={status}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">Todos los estados</option>
+          {statuses.map((item) => (
+            <option key={item} value={item}>
+              {statusLabels[item]}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" variant="secondary">
+          Filtrar
+        </Button>
+      </form>
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Orden</TableHead>
+              <TableHead>Cliente</TableHead>
+              <TableHead>Equipo</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead>Prioridad</TableHead>
+              <TableHead>Técnico</TableHead>
+              <TableHead>Ingreso</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {orders.map((order) => (
+              <TableRow key={order.id}>
+                <TableCell>
+                  <Link
+                    className="font-medium underline-offset-4 hover:underline"
+                    href={`/orders/${order.id}`}
+                  >
+                    {formatOrderNumber(order.number)}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  <Link
+                    href={`/clients/${order.clientId}`}
+                    className="hover:underline"
+                  >
+                    {order.client.name}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  {order.brand} {order.model}
+                </TableCell>
+                <TableCell className="space-x-2">
+                  <StatusBadge status={order.status as OrderStatus} />
+                  {isOrderOverdue(order.updatedAt) && (
+                    <Badge variant="destructive">
+                      {businessDaysBetween(order.updatedAt, new Date())} días
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>{order.priority}</TableCell>
+                <TableCell>{order.technician.name}</TableCell>
+                <TableCell>{formatDate(order.createdAt)}</TableCell>
+              </TableRow>
             ))}
-          </div>
-        </CardContent>
-      </Card>
+            {orders.length === 0 && (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No se encontraron órdenes.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }

@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Users,
   UserCog,
+  ChartNoAxesCombined,
   LogOut,
   Sun,
   Moon,
@@ -52,6 +53,12 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Órdenes", href: "/orders", icon: ClipboardList },
   { label: "Clientes", href: "/clients", icon: Users },
   { label: "Usuarios", href: "/admin/users", icon: UserCog, adminOnly: true },
+  {
+    label: "Reportes",
+    href: "/admin/reports",
+    icon: ChartNoAxesCombined,
+    adminOnly: true,
+  },
 ]
 
 type Props = {
@@ -68,10 +75,12 @@ export function NavSidebar({ user }: Props) {
   const router = useRouter()
   const { isMobile } = useSidebar()
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = React.useState(false)
+  const mounted = React.useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  )
   const isAdmin = user.role === "ADMIN"
-
-  React.useEffect(() => setMounted(true), [])
 
   async function handleSignOut() {
     await signOut()
@@ -94,14 +103,14 @@ export function NavSidebar({ user }: Props) {
         <div className="flex items-center gap-2">
           <Image
             src="/images/logo.svg"
-            alt="TechTrack MD"
+            alt="TechTrack"
             width={32}
             height={32}
             className="shrink-0"
             priority
           />
           <div>
-            <p className="text-sm font-semibold leading-none">TechTrack MD</p>
+            <p className="text-sm leading-none font-semibold">TechTrack</p>
             <p className="text-xs text-muted-foreground">Martinez Devices</p>
           </div>
         </div>
@@ -112,20 +121,25 @@ export function NavSidebar({ user }: Props) {
           <SidebarGroupLabel>Navegación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    tooltip={item.label}
-                    isActive={pathname === item.href || pathname.startsWith(item.href + "/")}
-                  >
-                    <Link href={item.href}>
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map(
+                (item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={item.label}
+                      isActive={
+                        pathname === item.href ||
+                        pathname.startsWith(item.href + "/")
+                      }
+                    >
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -140,13 +154,19 @@ export function NavSidebar({ user }: Props) {
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  <Avatar className="h-8 w-8 rounded-lg shrink-0">
-                    {user.image && <AvatarImage src={user.image} alt={user.name} />}
-                    <AvatarFallback className="rounded-lg text-xs">{initials}</AvatarFallback>
+                  <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                    {user.image && (
+                      <AvatarImage src={user.image} alt={user.name} />
+                    )}
+                    <AvatarFallback className="rounded-lg text-xs">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {user.email}
+                    </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -159,20 +179,34 @@ export function NavSidebar({ user }: Props) {
               >
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg shrink-0">
-                      {user.image && <AvatarImage src={user.image} alt={user.name} />}
-                      <AvatarFallback className="rounded-lg text-xs">{initials}</AvatarFallback>
+                    <Avatar className="h-8 w-8 shrink-0 rounded-lg">
+                      {user.image && (
+                        <AvatarImage src={user.image} alt={user.name} />
+                      )}
+                      <AvatarFallback className="rounded-lg text-xs">
+                        {initials}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-medium">{user.name}</span>
-                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {user.email}
+                      </span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem onClick={() => mounted && setTheme(isDark ? "light" : "dark")}>
-                    {mounted && isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  <DropdownMenuItem
+                    onClick={() =>
+                      mounted && setTheme(isDark ? "light" : "dark")
+                    }
+                  >
+                    {mounted && isDark ? (
+                      <Sun className="h-4 w-4" />
+                    ) : (
+                      <Moon className="h-4 w-4" />
+                    )}
                     {mounted && isDark ? "Modo claro" : "Modo oscuro"}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>

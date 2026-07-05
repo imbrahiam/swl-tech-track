@@ -71,11 +71,12 @@ export function RegisterForm() {
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-destructive">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
+                {field.state.meta.isTouched &&
+                  field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors.join(", ")}
+                    </p>
+                  )}
               </div>
             )}
           </form.Field>
@@ -103,11 +104,12 @@ export function RegisterForm() {
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-destructive">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
+                {field.state.meta.isTouched &&
+                  field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors.join(", ")}
+                    </p>
+                  )}
               </div>
             )}
           </form.Field>
@@ -133,22 +135,25 @@ export function RegisterForm() {
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.isTouched && field.state.meta.errors.length > 0 ? (
+                {field.state.meta.isTouched &&
+                field.state.meta.errors.length > 0 ? (
                   <p className="text-sm text-destructive">
                     {field.state.meta.errors.join(", ")}
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground">Mínimo 8 caracteres</p>
+                  <p className="text-xs text-muted-foreground">
+                    Mínimo 8 caracteres
+                  </p>
                 )}
               </div>
             )}
           </form.Field>
 
-          {authError && (
-            <p className="text-sm text-destructive">{authError}</p>
-          )}
+          {authError && <p className="text-sm text-destructive">{authError}</p>}
 
-          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+          <form.Subscribe
+            selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+          >
             {([canSubmit, isSubmitting]) => (
               <Button type="submit" className="w-full" disabled={!canSubmit}>
                 {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}

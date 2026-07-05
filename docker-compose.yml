@@ -1,0 +1,28 @@
+services:
+  techtrack:
+    build: .
+    container_name: techtrack
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      - "127.0.0.1:3100:3000"
+    volumes:
+      - ./data:/data
+    networks:
+      - web
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://127.0.0.1:3000/login').then(r => { if (!r.ok) process.exit(1) })",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  web:
+    external: true

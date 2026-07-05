@@ -1,4 +1,4 @@
-import { OrderStatus } from "@/generated/prisma/client"
+import type { OrderStatus } from "@/lib/domain"
 
 /**
  * Valid order status transitions — enforces business flow from requirements (Section 7).

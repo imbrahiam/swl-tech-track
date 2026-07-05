@@ -1,96 +1,138 @@
-import { ClipboardList, Clock, AlertTriangle, CheckCircle2 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import Link from "next/link"
+import { prisma } from "@/lib/prisma"
+import { businessDaysBetween, isOrderOverdue } from "@/lib/business-days"
+import { formatOrderNumber } from "@/lib/format"
+import { PriorityBadge, StatusBadge } from "@/components/order-badge"
+import type { OrderStatus, Priority } from "@/lib/domain"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
-export const metadata = { title: "Dashboard — TechTrack MD" }
+export const metadata = { title: "Dashboard — TechTrack" }
 
-// ── Placeholder stat cards ─────────────────────────────────────────────
-// TODO (D-01): Replace with real prisma.order.groupBy() aggregation
-const STAT_CARDS = [
-  {
-    label: "Órdenes activas",
-    value: "—",
-    icon: ClipboardList,
-    description: "En proceso actualmente",
-  },
-  {
-    label: "Ingresadas hoy",
-    value: "—",
-    icon: Clock,
-    description: "Recibidas en el día",
-  },
-  {
-    label: "Con alerta",
-    value: "—",
-    icon: AlertTriangle,
-    description: "+10 días sin cambio",
-    variant: "destructive" as const,
-  },
-  {
-    label: "Completadas hoy",
-    value: "—",
-    icon: CheckCircle2,
-    description: "Entregadas o cerradas",
-  },
-]
-
-export default function PaginaDashboard() {
+export default async function DashboardPage() {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const [active, enteredToday, completedToday, queue] = await Promise.all([
+    prisma.order.count({
+      where: { status: { notIn: ["ENTREGADO", "SIN_REPARACION"] } },
+    }),
+    prisma.order.count({ where: { createdAt: { gte: today } } }),
+    prisma.order.count({
+      where: {
+        status: { in: ["ENTREGADO", "SIN_REPARACION"] },
+        updatedAt: { gte: today },
+      },
+    }),
+    prisma.order.findMany({
+      where: { status: { notIn: ["ENTREGADO", "SIN_REPARACION"] } },
+      include: { client: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ])
+  const priorityOrder: Record<Priority, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 }
+  queue.sort(
+    (a, b) =>
+      priorityOrder[a.priority as Priority] -
+        priorityOrder[b.priority as Priority] ||
+      a.createdAt.getTime() - b.createdAt.getTime()
+  )
+  const overdue = queue.filter((order) =>
+    isOrderOverdue(order.updatedAt)
+  ).length
+  const stats = [
+    ["Órdenes activas", active],
+    ["Ingresadas hoy", enteredToday],
+    ["Con alerta", overdue],
+    ["Completadas hoy", completedToday],
+  ] as const
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <h1 className="text-xl font-semibold">Dashboard</h1>
+    <div className="space-y-6 p-4 md:p-8">
+      <div>
+        <h1 className="text-2xl font-semibold">Panel de trabajo</h1>
+        <p className="text-sm text-muted-foreground">
+          Estado operativo en tiempo real.
+        </p>
       </div>
-
-      {/* Stat cards — RF-07 */}
-      <section>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STAT_CARDS.map((card) => (
-            <Card key={card.label}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-                <card.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{card.value}</div>
-                <p className="text-xs text-muted-foreground">{card.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Work queue placeholder — RF-08 */}
-      <section>
-        <Card>
-          <CardHeader>
-            <CardTitle>Cola de trabajo</CardTitle>
-            <CardDescription>
-              Órdenes activas ordenadas por prioridad y fecha de ingreso
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* TODO (D-02 / CC): Implement sortable order queue table */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 border border-dashed p-3 text-sm text-muted-foreground">
-                <Badge variant="outline">Pendiente</Badge>
-                <span>Tarea D-02 — Cola de trabajo con filtros y ordenamiento</span>
-              </div>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-4 w-16 rounded" />
-                  <Skeleton className="h-4 flex-1 rounded" />
-                  <Skeleton className="h-4 w-20 rounded" />
-                  <Skeleton className="h-4 w-16 rounded" />
-                </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(([label, value]) => (
+          <Card key={label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Cola activa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Orden</TableHead>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Equipo</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead>Prioridad</TableHead>
+                <TableHead>Días laborables sin cambio</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {queue.map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell>
+                    <Link
+                      href={`/orders/${order.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {formatOrderNumber(order.number)}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{order.client.name}</TableCell>
+                  <TableCell>
+                    {order.brand} {order.model}
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={order.status as OrderStatus} />
+                  </TableCell>
+                  <TableCell>
+                    <PriorityBadge priority={order.priority as Priority} />
+                  </TableCell>
+                  <TableCell
+                    className={
+                      isOrderOverdue(order.updatedAt)
+                        ? "font-semibold text-destructive"
+                        : ""
+                    }
+                  >
+                    {businessDaysBetween(order.updatedAt, new Date())}
+                  </TableCell>
+                </TableRow>
               ))}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+              {queue.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center">
+                    No hay órdenes activas.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
