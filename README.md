@@ -4,7 +4,7 @@ Sistema web para registrar, diagnosticar, reparar y entregar equipos de **Martin
 
 ## Qué hace
 
-- Inicio de sesión con correo/contraseña y Google.
+- Inicio de sesión con correo y contraseña.
 - Panel con órdenes activas, prioridades, actividad diaria y alertas por más de 10 días laborables.
 - Registro de clientes y órdenes con foto del equipo.
 - Flujo controlado: Recibido → Diagnóstico → Aprobación → Reparación → Listo → Entregado.
@@ -46,8 +46,6 @@ DATABASE_URL="file:./data/techtrack.db"
 BETTER_AUTH_SECRET="secreto-aleatorio-de-32-bytes-o-mas"
 BETTER_AUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-GOOGLE_CLIENT_ID=""
-GOOGLE_CLIENT_SECRET=""
 MINIO_ENDPOINT="s3.ejemplo.com"
 MINIO_ACCESS_KEY=""
 MINIO_SECRET_KEY=""
