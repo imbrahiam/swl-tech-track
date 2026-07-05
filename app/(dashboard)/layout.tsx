@@ -1,9 +1,6 @@
 import { requireSession } from "@/lib/session"
 import { NavSidebar } from "@/components/nav-sidebar"
-import {
-  SidebarInset,
-  SidebarProvider,
-} from "@/components/ui/sidebar"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
 export default async function DashboardLayout({

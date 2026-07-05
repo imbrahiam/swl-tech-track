@@ -1,49 +1,64 @@
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import Link from "next/link"
+import { prisma } from "@/lib/prisma"
+import { formatDate } from "@/lib/format"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
-export const metadata = { title: "Clientes — TechTrack MD" }
-
-export default function ClientsPage() {
+export const metadata = { title: "Clientes — TechTrack" }
+export default async function ClientsPage() {
+  const clients = await prisma.client.findMany({
+    include: { _count: { select: { orders: true } } },
+    orderBy: { name: "asc" },
+  })
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <h1 className="text-xl font-semibold">Clientes</h1>
+    <div className="space-y-6 p-4 md:p-8">
+      <div>
+        <h1 className="text-2xl font-semibold">Clientes</h1>
+        <p className="text-sm text-muted-foreground">
+          Historial consolidado de servicios.
+        </p>
       </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Historial de clientes</CardTitle>
-          <CardDescription>
-            Todos los clientes registrados y sus órdenes — RF-12
-          </CardDescription>
+          <CardTitle>{clients.length} clientes</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* TODO (D-05 / DA): List clients with order count, link to /clients/[id] */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded border border-dashed p-3 text-sm text-muted-foreground">
-              <Badge variant="outline">Pendiente</Badge>
-              <span>Tarea D-05 — Lista de clientes con conteo de órdenes históricas</span>
-            </div>
-
-            <div className="grid grid-cols-4 gap-3 border-b pb-2 text-xs font-medium text-muted-foreground">
-              <span>Nombre</span>
-              <span>Cédula</span>
-              <span>Teléfono</span>
-              <span>Total órdenes</span>
-            </div>
-
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-4 gap-3">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-8" />
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Cédula</TableHead>
+                <TableHead>Teléfono</TableHead>
+                <TableHead>Órdenes</TableHead>
+                <TableHead>Registro</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clients.map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell>
+                    <Link
+                      href={`/clients/${client.id}`}
+                      className="font-medium hover:underline"
+                    >
+                      {client.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell>{client.cedula}</TableCell>
+                  <TableCell>{client.phone}</TableCell>
+                  <TableCell>{client._count.orders}</TableCell>
+                  <TableCell>{formatDate(client.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>

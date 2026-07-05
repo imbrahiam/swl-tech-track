@@ -21,7 +21,10 @@ export function LoginForm() {
     },
     onSubmit: async ({ value }) => {
       setAuthError(null)
-      const result = await signIn.email({ email: value.email, password: value.password })
+      const result = await signIn.email({
+        email: value.email,
+        password: value.password,
+      })
       if (result.error) {
         setAuthError("Correo o contraseña incorrectos.")
         return
@@ -72,11 +75,12 @@ export function LoginForm() {
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-destructive">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
+                {field.state.meta.isTouched &&
+                  field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors.join(", ")}
+                    </p>
+                  )}
               </div>
             )}
           </form.Field>
@@ -99,20 +103,21 @@ export function LoginForm() {
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
                 />
-                {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-destructive">
-                    {field.state.meta.errors.join(", ")}
-                  </p>
-                )}
+                {field.state.meta.isTouched &&
+                  field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors.join(", ")}
+                    </p>
+                  )}
               </div>
             )}
           </form.Field>
 
-          {authError && (
-            <p className="text-sm text-destructive">{authError}</p>
-          )}
+          {authError && <p className="text-sm text-destructive">{authError}</p>}
 
-          <form.Subscribe selector={(s) => [s.canSubmit, s.isSubmitting] as const}>
+          <form.Subscribe
+            selector={(s) => [s.canSubmit, s.isSubmitting] as const}
+          >
             {([canSubmit, isSubmitting]) => (
               <Button type="submit" className="w-full" disabled={!canSubmit}>
                 {isSubmitting ? "Ingresando..." : "Ingresar"}
@@ -123,12 +128,17 @@ export function LoginForm() {
 
         <div className="relative">
           <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+          <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
             o continúa con
           </span>
         </div>
 
-        <Button variant="outline" className="w-full" onClick={handleGoogle} type="button">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogle}
+          type="button"
+        >
           <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" aria-hidden>
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

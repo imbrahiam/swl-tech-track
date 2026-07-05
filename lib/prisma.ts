@@ -1,13 +1,12 @@
 import { PrismaClient } from "@/generated/prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
+import { PrismaLibSql } from "@prisma/adapter-libsql"
 
 const createPrismaClient = () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL! })
   return new PrismaClient({ adapter })
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var prisma: ReturnType<typeof createPrismaClient> | undefined
 }
 

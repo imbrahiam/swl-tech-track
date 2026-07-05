@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { OrderStatus } from "@/generated/prisma/client"
+import { ORDER_STATUSES, type OrderStatus } from "@/lib/domain"
 import {
   canTransition,
   isFinalStatus,
@@ -27,14 +27,14 @@ describe("Order status transitions", () => {
   })
 
   it("blocks all transitions from ENTREGADO (closed order)", () => {
-    const allStatuses = Object.values(OrderStatus)
+    const allStatuses = ORDER_STATUSES
     for (const status of allStatuses) {
       expect(canTransition("ENTREGADO", status)).toBe(false)
     }
   })
 
   it("blocks all transitions from SIN_REPARACION (closed order)", () => {
-    const allStatuses = Object.values(OrderStatus)
+    const allStatuses = ORDER_STATUSES
     for (const status of allStatuses) {
       expect(canTransition("SIN_REPARACION", status)).toBe(false)
     }

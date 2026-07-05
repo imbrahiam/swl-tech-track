@@ -1,8 +1,9 @@
 import {
   S3Client,
   PutObjectCommand,
-  DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 
@@ -17,7 +18,7 @@ export const storage = new S3Client({
     accessKeyId: process.env.MINIO_ACCESS_KEY!,
     secretAccessKey: process.env.MINIO_SECRET_KEY!,
   },
-  forcePathStyle: false, // MinIO with custom domain uses virtual-hosted style
+  forcePathStyle: process.env.MINIO_FORCE_PATH_STYLE === "true",
 })
 
 /**
@@ -62,6 +63,49 @@ export function getImageUrl(key: string, width = 0, height = 0) {
 /**
  * Deletes an object from storage.
  */
-export async function deleteObject(key: string) {
-  await storage.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+export async function putObject(
+  key: string,
+  body: Uint8Array,
+  contentType: string
+) {
+  await storage.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: contentType,
+    })
+  )
+}
+
+export async function objectExists(key: string, bucket = BUCKET) {
+  try {
+    await storage.send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
+    return true
+  } catch (error) {
+    if (
+      (error as { $metadata?: { httpStatusCode?: number } }).$metadata
+        ?.httpStatusCode === 404
+    ) {
+      return false
+    }
+    throw error
+  }
+}
+
+/** Copies once to a deterministic key, making repeated seeds storage-idempotent. */
+export async function copyObjectIfMissing(
+  sourceBucket: string,
+  sourceKey: string,
+  targetKey: string
+) {
+  if (await objectExists(targetKey)) return false
+  await storage.send(
+    new CopyObjectCommand({
+      Bucket: BUCKET,
+      Key: targetKey,
+      CopySource: `${sourceBucket}/${encodeURIComponent(sourceKey).replaceAll("%2F", "/")}`,
+    })
+  )
+  return true
 }

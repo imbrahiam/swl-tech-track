@@ -12,7 +12,7 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata = {
-  title: "TechTrack MD",
+  title: "TechTrack",
   description: "Sistema de gestión de órdenes de servicio técnico",
   icons: {
     icon: "/images/logo.svg",
@@ -29,7 +29,12 @@ export default function RootLayout({
     <html
       lang="es"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        inter.variable
+      )}
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>
